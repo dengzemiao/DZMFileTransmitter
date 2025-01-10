@@ -8,16 +8,6 @@
     body {
       font-family: Arial, sans-serif;
     }
-    #progress-bar {
-      width: 100%;
-      background-color: #f3f3f3;
-      margin: 20px 0;
-    }
-    #progress {
-      height: 20px;
-      width: 0;
-      background-color: #4caf50;
-    }
     .file-list {
       margin-top: 20px;
     }
@@ -42,6 +32,16 @@
     .error {
       color: red;
     }
+    .progress-bar {
+      width: 100%;
+      background-color: #f3f3f3;
+      margin: 10px 0;
+    }
+    .progress {
+      height: 20px;
+      width: 0;
+      background-color: #4caf50;
+    }
   </style>
 </head>
 <body>
@@ -51,11 +51,6 @@
   <!-- File Upload Form -->
   <input type="file" id="file-input" multiple>
   <button id="upload-btn">Upload</button>
-
-  <!-- Progress Bar -->
-  <div id="progress-bar">
-    <div id="progress"></div>
-  </div>
 
   <!-- Status Message -->
   <div id="status-message" class="status-message">No files uploaded yet.</div>
@@ -77,10 +72,6 @@
 
       // 显示 "Uploading..." 文案
       document.getElementById('status-message').textContent = 'Uploading...';
-
-      // 创建一个 FormData 对象
-      const formData = new FormData();
-      Array.from(files).forEach(file => formData.append('files', file));
 
       // 上传每个文件
       const uploadPromises = Array.from(files).map(file => uploadFile(file));
@@ -110,6 +101,17 @@
         const formData = new FormData();
         formData.append('files', file);
 
+        // 创建文件项的进度条
+        const fileItem = document.createElement('div');
+        fileItem.classList.add('file-item');
+        const progressBar = document.createElement('div');
+        progressBar.classList.add('progress-bar');
+        const progress = document.createElement('div');
+        progress.classList.add('progress');
+        progressBar.appendChild(progress);
+        fileItem.appendChild(progressBar);
+        document.getElementById('file-list').appendChild(fileItem);
+
         const xhr = new XMLHttpRequest();
         xhr.open('POST', '/upload', true);
 
@@ -117,7 +119,7 @@
         xhr.upload.onprogress = (event) => {
           if (event.lengthComputable) {
             const percent = (event.loaded / event.total) * 100;
-            document.getElementById('progress').style.width = percent + '%';
+            progress.style.width = percent + '%';
           }
         };
 
@@ -125,13 +127,16 @@
         xhr.onload = () => {
           if (xhr.status === 200) {
             resolve();
+            progress.style.backgroundColor = '#4caf50';  // 上传成功，设置绿色
           } else {
             reject(file.name);  // 返回文件名作为失败原因
+            progress.style.backgroundColor = 'red';  // 上传失败，设置红色
           }
         };
 
         xhr.onerror = () => {
           reject(file.name);  // 返回文件名作为失败原因
+          progress.style.backgroundColor = 'red';  // 上传失败，设置红色
         };
 
         xhr.send(formData);
