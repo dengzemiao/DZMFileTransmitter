@@ -18,6 +18,8 @@
   $ npm i
   ```
 
+  如果遇到依赖安装报错，可以移除 `package-lock.json` 与 `node_modules`，再次执行上面命令重新安装依赖。
+
 * 运行服务
 
   ```sh
