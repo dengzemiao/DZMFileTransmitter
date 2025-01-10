@@ -110,7 +110,8 @@
         progress.classList.add('progress');
         progressBar.appendChild(progress);
         fileItem.appendChild(progressBar);
-        document.getElementById('file-list').appendChild(fileItem);
+        document.getElementById('file-list').insertBefore(fileItem, document.getElementById('file-list').firstChild);
+        // document.getElementById('file-list').appendChild(fileItem);
 
         const xhr = new XMLHttpRequest();
         xhr.open('POST', '/upload', true);
