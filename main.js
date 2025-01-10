@@ -2,6 +2,7 @@ const express = require('express');
 const multer = require('multer');
 const path = require('path');
 const fs = require('fs');
+const url = require('url');
 
 // 创建 express 实例
 const app = express();
@@ -23,7 +24,9 @@ const storage = multer.diskStorage({
   },
   filename: (req, file, cb) => {
     // 使用原始文件名（包括后缀）
-    cb(null, file.originalname);  // 保留原始文件名和后缀
+    // 使用 Buffer 来确保文件名以 UTF-8 编码保存
+    const filename = Buffer.from(file.originalname, 'latin1').toString('utf8');  // 强制转换为 UTF-8 编码
+    cb(null, filename);  // 保留原始文件名和后缀
   }
 });
 
@@ -57,6 +60,44 @@ app.get('/files', (req, res) => {
     }
     // 返回文件列表
     res.send({ files });
+  });
+});
+
+// 删除单个文件
+app.delete('/delete/:filename', (req, res) => {
+  const filename = decodeURIComponent(req.params.filename);  // 解码文件名
+  const filePath = path.join(uploadDir, filename);
+  
+  fs.unlink(filePath, (err) => {
+    if (err) {
+      return res.status(500).send({ message: `Failed to delete file: ${filename}` });
+    }
+    res.send({ message: 'File deleted successfully' });
+  });
+});
+
+// 删除所有文件
+app.delete('/delete-all', (req, res) => {
+  fs.readdir(uploadDir, (err, files) => {
+    if (err) {
+      return res.status(500).send({ message: 'Error reading directory' });
+    }
+
+    if (files.length === 0) {
+      return res.send({ message: 'No files to delete.' });
+    }
+
+    // 删除所有文件
+    files.forEach(file => {
+      const filePath = path.join(uploadDir, file);
+      fs.unlink(filePath, (err) => {
+        if (err) {
+          console.log(`Failed to delete ${file}`);
+        }
+      });
+    });
+
+    res.send({ message: 'All files deleted successfully' });
   });
 });
 

@@ -3,92 +3,174 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Multi File Upload and Download</title>
+  <title>File Upload</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+    }
+    #progress-bar {
+      width: 100%;
+      background-color: #f3f3f3;
+      margin: 20px 0;
+    }
+    #progress {
+      height: 20px;
+      width: 0;
+      background-color: #4caf50;
+    }
+    .file-list {
+      margin-top: 20px;
+    }
+    .file-item {
+      margin: 5px 0;
+    }
+    .status-message {
+      margin-top: 10px;
+      font-size: 16px;
+    }
+    #delete-all-btn {
+      margin-top: 20px;
+      padding: 10px;
+      background-color: red;
+      color: white;
+      border: none;
+      cursor: pointer;
+    }
+    #delete-all-btn:hover {
+      background-color: darkred;
+    }
+  </style>
 </head>
 <body>
-  <h1>Upload Files</h1>
-  
-  <form id="uploadForm" enctype="multipart/form-data">
-    <input type="file" name="files" id="fileInput" multiple />
-    <button type="submit">Upload</button>
-  </form>
 
-  <p id="status"></p>
+  <h1>File Upload</h1>
+
+  <!-- File Upload Form -->
+  <input type="file" id="file-input" multiple>
+  <button id="upload-btn">Upload</button>
+
+  <!-- Progress Bar -->
+  <div id="progress-bar">
+    <div id="progress"></div>
+  </div>
+
+  <!-- Status Message -->
+  <div id="status-message" class="status-message">No files uploaded yet.</div>
 
   <h2>Uploaded Files</h2>
-  <ul id="fileList">
-    <!-- 文件列表将在此显示 -->
-  </ul>
+  <div class="file-list" id="file-list"></div>
+
+  <!-- 删除所有文件按钮 -->
+  <button id="delete-all-btn">Delete All Files</button>
 
   <script>
     // 上传文件
-    document.getElementById('uploadForm').addEventListener('submit', function(event) {
-      event.preventDefault();  // 防止表单默认提交行为
-
-      const fileInput = document.getElementById('fileInput');
-      const statusDiv = document.getElementById('status');
-
-      if (fileInput.files.length === 0) {
-        statusDiv.textContent = 'Please select files.';
+    document.getElementById('upload-btn').addEventListener('click', () => {
+      const files = document.getElementById('file-input').files;
+      if (files.length === 0) {
+        document.getElementById('status-message').textContent = 'Please select a file to upload.';
         return;
       }
 
+      // 显示 "Uploading..." 文案
+      document.getElementById('status-message').textContent = 'Uploading...';
+
+      // 创建一个 FormData 对象
       const formData = new FormData();
-      // 将所有选中的文件加入到 FormData 中
-      Array.from(fileInput.files).forEach(file => {
-        formData.append('files', file);
-      });
+      Array.from(files).forEach(file => formData.append('files', file));
 
-      statusDiv.textContent = 'Uploading...';
+      // 使用 XMLHttpRequest 发送文件
+      const xhr = new XMLHttpRequest();
+      xhr.open('POST', '/upload', true);
 
-      fetch('/upload', {
-        method: 'POST',
-        body: formData
-      })
-      .then(response => response.json())
-      .then(data => {
-        if (data.message === 'Files uploaded successfully!') {
-          statusDiv.textContent = `${data.files.length} files uploaded successfully!`;
-          loadFileList();  // 上传后刷新文件列表
-        } else {
-          statusDiv.textContent = 'File upload failed.';
+      // 上传进度
+      xhr.upload.onprogress = (event) => {
+        if (event.lengthComputable) {
+          const percent = (event.loaded / event.total) * 100;
+          document.getElementById('progress').style.width = percent + '%';
         }
-      })
-      .catch(error => {
-        statusDiv.textContent = 'Error uploading files.';
-        console.error('Error:', error);
-      });
+      };
+
+      // 上传完成后的回调
+      xhr.onload = () => {
+        if (xhr.status === 200) {
+          // 更新文案为上传成功
+          document.getElementById('status-message').textContent = 'Files uploaded successfully!';
+          loadFileList();  // 更新文件列表
+        } else {
+          document.getElementById('status-message').textContent = 'Failed to upload files.';
+        }
+      };
+
+      // 发送数据
+      xhr.send(formData);
     });
 
-    // 获取已上传的文件列表并显示
+    // 获取上传文件列表
     function loadFileList() {
       fetch('/files')
         .then(response => response.json())
         .then(data => {
-          const fileList = document.getElementById('fileList');
-          fileList.innerHTML = '';  // 清空文件列表
-          
+          const fileListElement = document.getElementById('file-list');
+          fileListElement.innerHTML = '';  // 清空文件列表
           data.files.forEach(file => {
-            const li = document.createElement('li');
-            li.textContent = file;
-            
-            // 添加下载链接
-            const downloadLink = document.createElement('a');
-            downloadLink.href = `/uploads/${file}`;
-            downloadLink.textContent = ' Download';
-            downloadLink.target = '_blank';  // 打开新窗口
-            
-            li.appendChild(downloadLink);
-            fileList.appendChild(li);
+            const div = document.createElement('div');
+            div.classList.add('file-item');
+            // 在显示文件时进行解码处理
+            const decodedFileName = decodeURIComponent(file);
+            div.innerHTML = `${decodedFileName} <a href="/uploads/${file}" download>Download</a> 
+                             <button onclick="deleteFile('${encodeURIComponent(file)}')">Delete</button>`;
+            fileListElement.appendChild(div);
           });
-        })
-        .catch(error => {
-          console.error('Error loading file list:', error);
         });
     }
 
-    // 页面加载时获取并显示文件列表
-    window.onload = loadFileList;
+    // 页面加载时获取文件列表
+    loadFileList();
+
+    // 删除单个文件
+    function deleteFile(filename) {
+      const decodedFilename = decodeURIComponent(filename);  // 解码文件名
+      if (confirm(`Are you sure you want to delete the file: ${decodedFilename}?`)) {
+        fetch(`/delete/${encodeURIComponent(filename)}`, {  // 编码文件名
+          method: 'DELETE',
+        })
+        .then(response => response.json())
+        .then(data => {
+          if (data.message === 'File deleted successfully') {
+            loadFileList(); // 更新文件列表
+            document.getElementById('status-message').textContent = `${decodedFilename} deleted successfully.`;
+          } else {
+            document.getElementById('status-message').textContent = `Failed to delete ${decodedFilename}.`;
+          }
+        })
+        .catch(() => {
+          document.getElementById('status-message').textContent = 'Error deleting file.';
+        });
+      }
+    }
+
+    // 全部删除按钮的二次确认
+    document.getElementById('delete-all-btn').addEventListener('click', () => {
+      if (confirm('Are you sure you want to delete all files? This action cannot be undone.')) {
+        fetch('/delete-all', {
+          method: 'DELETE',
+        })
+        .then(response => response.json())
+        .then(data => {
+          if (data.message === 'All files deleted successfully') {
+            loadFileList(); // 更新文件列表
+            document.getElementById('status-message').textContent = 'All files have been deleted.';
+          } else {
+            document.getElementById('status-message').textContent = 'Failed to delete all files.';
+          }
+        })
+        .catch(() => {
+          document.getElementById('status-message').textContent = 'Error deleting files.';
+        });
+      }
+    });
   </script>
+
 </body>
 </html>
