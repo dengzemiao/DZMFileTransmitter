@@ -1,0 +1,92 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>File Upload and Download</title>
+</head>
+<body>
+  <h1>Upload a File</h1>
+  
+  <form id="uploadForm" enctype="multipart/form-data">
+    <input type="file" name="file" id="fileInput" />
+    <button type="submit">Upload</button>
+  </form>
+
+  <p id="status"></p>
+
+  <h2>Uploaded Files</h2>
+  <ul id="fileList">
+    <!-- 文件列表将在此显示 -->
+  </ul>
+
+  <script>
+    // 上传文件
+    document.getElementById('uploadForm').addEventListener('submit', function(event) {
+      event.preventDefault();  // 防止表单默认提交行为
+
+      const fileInput = document.getElementById('fileInput');
+      const statusDiv = document.getElementById('status');
+
+      if (fileInput.files.length === 0) {
+        statusDiv.textContent = 'Please select a file.';
+        return;
+      }
+
+      const formData = new FormData();
+      formData.append('file', fileInput.files[0]);
+
+      statusDiv.textContent = 'Uploading...';
+
+      fetch('/upload', {
+        method: 'POST',
+        body: formData
+      })
+      .then(response => response.json())
+      .then(data => {
+        if (data.message === 'File uploaded successfully!') {
+          statusDiv.textContent = `File uploaded successfully! Filename: ${data.file.originalname}`;
+          loadFileList();  // 上传后刷新文件列表
+        } else {
+          statusDiv.textContent = 'File upload failed.';
+        }
+      })
+      .catch(error => {
+        statusDiv.textContent = 'Error uploading file.';
+        console.error('Error:', error);
+        alert(error)
+      });
+    });
+
+    // 获取已上传的文件列表并显示
+    function loadFileList() {
+      fetch('/files')
+        .then(response => response.json())
+        .then(data => {
+          const fileList = document.getElementById('fileList');
+          fileList.innerHTML = '';  // 清空文件列表
+          
+          data.files.forEach(file => {
+            const li = document.createElement('li');
+            li.textContent = file;
+            
+            // 添加下载链接
+            const downloadLink = document.createElement('a');
+            downloadLink.href = `/uploads/${file}`;
+            downloadLink.textContent = ' Download';
+            downloadLink.target = '_blank';  // 打开新窗口
+            
+            li.appendChild(downloadLink);
+            fileList.appendChild(li);
+          });
+        })
+        .catch(error => {
+          console.error('Error loading file list:', error);
+        });
+    }
+
+    // 页面加载时获取并显示文件列表
+    window.onload = loadFileList;
+  </script>
+</body>
+</html>
