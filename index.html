@@ -3,13 +3,13 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>File Upload and Download</title>
+  <title>Multi File Upload and Download</title>
 </head>
 <body>
-  <h1>Upload a File</h1>
+  <h1>Upload Files</h1>
   
   <form id="uploadForm" enctype="multipart/form-data">
-    <input type="file" name="file" id="fileInput" />
+    <input type="file" name="files" id="fileInput" multiple />
     <button type="submit">Upload</button>
   </form>
 
@@ -29,12 +29,15 @@
       const statusDiv = document.getElementById('status');
 
       if (fileInput.files.length === 0) {
-        statusDiv.textContent = 'Please select a file.';
+        statusDiv.textContent = 'Please select files.';
         return;
       }
 
       const formData = new FormData();
-      formData.append('file', fileInput.files[0]);
+      // 将所有选中的文件加入到 FormData 中
+      Array.from(fileInput.files).forEach(file => {
+        formData.append('files', file);
+      });
 
       statusDiv.textContent = 'Uploading...';
 
@@ -44,17 +47,16 @@
       })
       .then(response => response.json())
       .then(data => {
-        if (data.message === 'File uploaded successfully!') {
-          statusDiv.textContent = `File uploaded successfully! Filename: ${data.file.originalname}`;
+        if (data.message === 'Files uploaded successfully!') {
+          statusDiv.textContent = `${data.files.length} files uploaded successfully!`;
           loadFileList();  // 上传后刷新文件列表
         } else {
           statusDiv.textContent = 'File upload failed.';
         }
       })
       .catch(error => {
-        statusDiv.textContent = 'Error uploading file.';
+        statusDiv.textContent = 'Error uploading files.';
         console.error('Error:', error);
-        alert(error)
       });
     });
 

@@ -27,7 +27,7 @@ const storage = multer.diskStorage({
   }
 });
 
-// 设置 multer 中间件
+// 设置 multer 中间件，支持多个文件上传
 const upload = multer({ storage: storage });
 
 // 提供静态文件访问（可以通过浏览器查看上传的文件）
@@ -36,16 +36,15 @@ app.use('/uploads', express.static(uploadDir));
 // 提供 index.html 文件访问
 app.use(express.static(path.join(__dirname)));
 
-// 处理文件上传的 POST 请求
-app.post('/upload', upload.single('file'), (req, res) => {
-  // 文件上传成功
-  if (req.file) {
+// 处理多个文件上传的 POST 请求
+app.post('/upload', upload.array('files'), (req, res) => {
+  if (req.files) {
     res.send({
-      message: 'File uploaded successfully!',
-      file: req.file
+      message: 'Files uploaded successfully!',
+      files: req.files.map(file => file.originalname)
     });
   } else {
-    res.status(400).send({ message: 'No file uploaded!' });
+    res.status(400).send({ message: 'No files uploaded!' });
   }
 });
 
