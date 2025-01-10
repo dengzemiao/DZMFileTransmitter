@@ -39,6 +39,9 @@
     #delete-all-btn:hover {
       background-color: darkred;
     }
+    .error {
+      color: red;
+    }
   </style>
 </head>
 <body>
@@ -79,32 +82,61 @@
       const formData = new FormData();
       Array.from(files).forEach(file => formData.append('files', file));
 
-      // 使用 XMLHttpRequest 发送文件
-      const xhr = new XMLHttpRequest();
-      xhr.open('POST', '/upload', true);
+      // 上传每个文件
+      const uploadPromises = Array.from(files).map(file => uploadFile(file));
 
-      // 上传进度
-      xhr.upload.onprogress = (event) => {
-        if (event.lengthComputable) {
-          const percent = (event.loaded / event.total) * 100;
-          document.getElementById('progress').style.width = percent + '%';
-        }
-      };
-
-      // 上传完成后的回调
-      xhr.onload = () => {
-        if (xhr.status === 200) {
-          // 更新文案为上传成功
-          document.getElementById('status-message').textContent = 'Files uploaded successfully!';
-          loadFileList();  // 更新文件列表
+      // 等待所有文件上传完成
+      Promise.allSettled(uploadPromises).then(results => {
+        const failedFiles = results.filter(result => result.status === 'rejected').map(result => result.reason);
+        if (failedFiles.length > 0) {
+          document.getElementById('status-message').textContent = 'Some files failed to upload. See below:';
+          const failedFilesList = document.createElement('div');
+          failedFiles.forEach(file => {
+            const fileDiv = document.createElement('div');
+            fileDiv.textContent = file;
+            failedFilesList.appendChild(fileDiv);
+          });
+          document.getElementById('status-message').appendChild(failedFilesList);
         } else {
-          document.getElementById('status-message').textContent = 'Failed to upload files.';
+          document.getElementById('status-message').textContent = 'All files uploaded successfully!';
         }
-      };
-
-      // 发送数据
-      xhr.send(formData);
+        loadFileList();  // 更新文件列表
+      });
     });
+
+    // 上传单个文件的函数
+    function uploadFile(file) {
+      return new Promise((resolve, reject) => {
+        const formData = new FormData();
+        formData.append('files', file);
+
+        const xhr = new XMLHttpRequest();
+        xhr.open('POST', '/upload', true);
+
+        // 上传进度
+        xhr.upload.onprogress = (event) => {
+          if (event.lengthComputable) {
+            const percent = (event.loaded / event.total) * 100;
+            document.getElementById('progress').style.width = percent + '%';
+          }
+        };
+
+        // 上传完成后的回调
+        xhr.onload = () => {
+          if (xhr.status === 200) {
+            resolve();
+          } else {
+            reject(file.name);  // 返回文件名作为失败原因
+          }
+        };
+
+        xhr.onerror = () => {
+          reject(file.name);  // 返回文件名作为失败原因
+        };
+
+        xhr.send(formData);
+      });
+    }
 
     // 获取上传文件列表
     function loadFileList() {
@@ -116,7 +148,6 @@
           data.files.forEach(file => {
             const div = document.createElement('div');
             div.classList.add('file-item');
-            // 在显示文件时进行解码处理
             const decodedFileName = decodeURIComponent(file);
             div.innerHTML = `${decodedFileName} <a href="/uploads/${file}" download>Download</a> 
                              <button onclick="deleteFile('${encodeURIComponent(file)}')">Delete</button>`;
@@ -130,9 +161,9 @@
 
     // 删除单个文件
     function deleteFile(filename) {
-      const decodedFilename = decodeURIComponent(filename);  // 解码文件名
+      const decodedFilename = decodeURIComponent(filename);
       if (confirm(`Are you sure you want to delete the file: ${decodedFilename}?`)) {
-        fetch(`/delete/${encodeURIComponent(filename)}`, {  // 编码文件名
+        fetch(`/delete/${encodeURIComponent(filename)}`, {
           method: 'DELETE',
         })
         .then(response => response.json())
