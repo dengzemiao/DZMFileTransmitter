@@ -3,10 +3,27 @@ const multer = require('multer');
 const path = require('path');
 const fs = require('fs');
 const url = require('url');
+const os = require("os");
 
 // 创建 express 实例
 const app = express();
 const port = 3000;
+
+// 获取本地内网 IP 地址
+const networkInterfaces = os.networkInterfaces();
+// 默认 localhost
+let localIP = '127.0.0.1';
+// 遍历网络接口，查找内网 IP 地址
+for (const interfaceName in networkInterfaces) {
+  const interfaces = networkInterfaces[interfaceName];
+  for (const iface of interfaces) {
+    if (iface.family === 'IPv4' && !iface.internal) {
+      localIP = iface.address; // 获取内网 IP 地址
+      break;
+    }
+  }
+}
+
 
 // 设置文件保存路径和文件名格式
 const uploadDir = path.join(__dirname, 'uploads');
@@ -103,5 +120,7 @@ app.delete('/delete-all', (req, res) => {
 
 // 启动服务器
 app.listen(port, () => {
-  console.log(`Server is running at http://localhost:${port}`);
+  console.log(`服务器启动成功！`);
+  console.log(`本地访问链接：http://localhost:${port}`);
+  console.log(`内网访问链接：http://${localIP}:${port}`);
 });
